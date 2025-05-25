@@ -61,7 +61,7 @@ if MODE == "train":
     )
 
     # ✅ 학습 실행
-    model.learn(total_timesteps=1_000_000, callback=[eval_callback, PrintStepCallback()])
+    model.learn(total_timesteps=100_000, callback=[eval_callback, PrintStepCallback()])
 
     # ✅ 마지막 모델 저장
     model.save("dqn_emotion_balance")

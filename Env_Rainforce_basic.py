@@ -2,6 +2,7 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 from Balance_Game_basic import EmotionGameCore
+import math
 
 class EmotionBalanceEnv(gym.Env):
     def __init__(self, enabled=False):
@@ -49,27 +50,40 @@ class EmotionBalanceEnv(gym.Env):
         ], dtype=np.float32)
 
     def _compute_reward(self):
-        # 성공 / 실패 보상
+        # 1) 성공/실패
         if self.game.success:
             return +100
         if self.game.game_over:
             return -100
 
-        # 1) 높이 비율 보상: 0(bottom) ~ 1(top)
+        # 2) 높이 비율: 0(bottom) ~ 1(top)
         height_ratio = (self.game.HEIGHT - self.game.ball_y) / self.game.HEIGHT
 
-        # 2) 가로 중앙 비율: 0(edge) ~ 1(center)
+        # 3) X축 정렬 비율: 0(edge) ~ 1(center)
         x_dist = abs(self.game.ball_x - self.game.bar_center_x)
         max_dist = self.game.bar_width / 2
         x_ratio = max(0.0, 1.0 - x_dist / max_dist)
 
-        # 3) 위로 움직인 양(ΔY)
+        # 4) ΔY 보상 (위로 움직인 만큼)
         delta_y = self.prev_y - self.game.ball_y
 
-        # 4) 합산 보상
-        reward = height_ratio + x_ratio + delta_y
+        # 5) 동적 가중치 설정
+        #    - 높이 비중 = 1 − height_ratio  (낮을 때 높이 위주)
+        #    - 가로 비중 = height_ratio      (높을 때 가로 위주)
+        w_y = 1.0 - height_ratio
+        w_x = height_ratio
 
-        # 5) 상태 업데이트
+        # 6) 개별 보상 스케일
+        height_reward = 10.0 * height_ratio
+        x_reward = 10.0 * x_ratio
+        vel_reward = 2.0 * delta_y
+
+        # 7) 최종 보상
+        reward = w_y * height_reward \
+                 + w_x * x_reward \
+                 + vel_reward
+
+        # 8) 상태 업데이트
         self.prev_y = self.game.ball_y
 
         return reward
